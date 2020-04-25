@@ -1,5 +1,9 @@
 // snapVim
-// Give me vim bindings for window snap, plus Print Screen -> Media Play/Pause
+// Give me vim bindings for window snap, 
+// 
+//Media key binds:	Print Screen -> Media Play/Pause
+//					Scroll Lock / Pause Break -> Vol Up / Down
+//					Shift + Scoll Lock / Pause Break -> Prev / Next Track
 
 // based on: https://www.unknowncheats.me/forum/c-and-c-/83707-setwindowshookex-example.html
 
@@ -10,9 +14,11 @@ HHOOK _hook;
 KBDLLHOOKSTRUCT kbdStruct;
 
 enum Snap { LEFT, RIGHT, UP, DOWN };
+enum Vol {VOL_DOWN, VOL_UP};
 
 int snap(Snap snap);
 int media_play_pause();
+int volume_next(Vol vol);
 
 LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
 
@@ -42,6 +48,14 @@ LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
 				// PrintScreen
 				retVal = media_play_pause();
 			}
+			else if (kbdStruct.vkCode == VK_SCROLL) {
+				// volume down
+				volume_next(VOL_DOWN);
+			}
+			else if (kbdStruct.vkCode == VK_PAUSE) {
+				// volume up
+				volume_next(VOL_UP);
+			}
 		}
 	}
 
@@ -50,6 +64,46 @@ LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
 	}
 
 	return CallNextHookEx(_hook, nCode, wParam, lParam);
+}
+
+int volume_next(Vol vol) {
+	INPUT ip;
+	ip.type = INPUT_KEYBOARD;
+	ip.ki.wScan = 0;
+	ip.ki.time = 0;
+	ip.ki.dwExtraInfo = 0;
+	ip.ki.wVk = VK_MEDIA_PLAY_PAUSE;
+	ip.ki.dwFlags = 0;  // key press down
+
+
+	DWORD shift_key = 0;
+	shift_key = GetAsyncKeyState(VK_SHIFT);
+
+	if (shift_key != 0) {
+		// skip track
+		if (vol == VOL_DOWN) {
+			ip.ki.wVk = VK_MEDIA_PREV_TRACK;
+		}
+		else if (vol == VOL_UP) {
+			ip.ki.wVk = VK_MEDIA_NEXT_TRACK;
+		}
+	}
+	else {
+		if (vol == VOL_DOWN) {
+			ip.ki.wVk = VK_VOLUME_DOWN;
+		}
+		else if (vol == VOL_UP) {
+			ip.ki.wVk = VK_VOLUME_UP;
+		}
+
+	}
+
+	SendInput(1, &ip, sizeof(INPUT));
+	ip.ki.dwFlags = KEYEVENTF_KEYUP;
+	SendInput(1, &ip, sizeof(INPUT));
+
+	return 1;
+
 }
 
 int media_play_pause() {
@@ -131,11 +185,13 @@ int __stdcall WinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
 	LPSTR    lpCmdLine,
 	int       cmdShow)
+//void main()
 {
 	SetHook();
 
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0)) {
-
+		// keeps fetching messages from thread's message queue
 	}
+
 }
